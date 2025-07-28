@@ -1,21 +1,17 @@
-# Dockerfile (na raiz do repo)
+# Na raiz do repo, arquivo chamado Dockerfile
+
 FROM atendai/evolution-api:v2.2.0
 
-# 1) Muda para root pra ter permissão de instalar pacotes
+# Precisamos de root para escrever dentro do node_modules
 USER root
 
-# 2) Instala GNU sed (o Alpine vem só com busybox-sed)
-RUN apk update \
- && apk add --no-cache gnu-sed \
- && rm -rf /var/cache/apk/*
+# 1) Instala o sed (busybox) e já aplica o patch dentro do mesmo RUN:
+RUN apk add --no-cache sed \
+ && sed -i '\|class WebSocketClient|,\|^}|{ \
+      s|async close()|close()|g; \
+      s|await this\.socket\.close()|this.socket.close()|g \
+    }' \
+    /evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js
 
-# 3) Aplica o patch no WebSocketClient do baileys:
-#    - remove "async" de close()
-#    - remove "await" antes de this.socket.close()
-RUN gsed -i -E 's/\basync close\(\)/close()/g' \
-      /evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js \
- && gsed -i -E 's/await this\.socket\.close\(\)/this.socket.close()/g' \
-      /evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js
-
-# 4) Volta para o usuário não-root (node)
+# Volta para o usuário não-root
 USER node
