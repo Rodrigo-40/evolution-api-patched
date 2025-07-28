@@ -1,14 +1,20 @@
-# Dockerfile na raiz do repo
-
+# Dockerfile (na raiz do repo)
 FROM atendai/evolution-api:v2.2.0
 
+# preciso de root pra editar node_modules
 USER root
 
-# instala o sed (busybox) e aplica o patch em duas etapas
-RUN apk add --no-cache sed \
- && sed -i '/class WebSocketClient/,/}/ s/async close()/close()/g' \
-    /evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js \
- && sed -i '/class WebSocketClient/,/}/ s/await this\.socket\.close()/this.socket.close()/g' \
-    /evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js
+# 1) Aplica patch em websocket.js via Node, trocando async/await close() por close()
+RUN node -e '
+  const fs = require("fs");
+  const file = "/evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js";
+  let src = fs.readFileSync(file, "utf8");
+  // remove "async " antes de close()
+  src = src.replace(/async close\(\)/g, "close()");
+  // remove await neste trecho específico
+  src = src.replace(/await this\.socket\.close\(\)/g, "this.socket.close()");
+  fs.writeFileSync(file, src);
+'
 
+# volta a usar usuário não-root
 USER node
