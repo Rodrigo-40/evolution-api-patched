@@ -27,4 +27,5 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/evolution-api-patched:latest
+          # <– aqui forçamos o 'rodrigo-40' em minúsculas
+          tags: ghcr.io/rodrigo-40/evolution-api-patched:latest
