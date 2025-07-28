@@ -1,9 +1,8 @@
 FROM atendai/evolution-api:v2.2.0
-
 USER root
 
-# Patch Baileys para tornar close() síncrono e evitar o uncaughtException
-RUN sed -i '/class WebSocketClient/,/^}/s/async close()[^{]*/close()/' \
-    /evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js && \
-    sed -i '/this.socket.close()/!b;N; s/await this.socket.close()/this.socket.close()/' \
-    /evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js
+# Patch Baileys: troca async close()/await this.socket.close() por versões síncronas
+RUN sed -i \
+    -e 's/async close()/close()/g' \
+    -e 's/await this.socket.close()/this.socket.close()/g' \
+    /evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js || true
