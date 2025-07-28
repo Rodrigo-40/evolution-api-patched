@@ -1,20 +1,20 @@
 # Dockerfile (na raiz do repo)
 FROM atendai/evolution-api:v2.2.0
 
-# preciso de root pra editar node_modules
+# 1) Torna-se root para poder alterar node_modules
 USER root
 
-# 1) Aplica patch em websocket.js via Node, trocando async/await close() por close()
-RUN node -e '
-  const fs = require("fs");
-  const file = "/evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js";
-  let src = fs.readFileSync(file, "utf8");
-  // remove "async " antes de close()
-  src = src.replace(/async close\(\)/g, "close()");
-  // remove await neste trecho específico
-  src = src.replace(/await this\.socket\.close\(\)/g, "this.socket.close()");
-  fs.writeFileSync(file, src);
-'
+# 2) Aplica o patch em websocket.js usando Node puro
+RUN node -e " \
+  const fs = require('fs'); \
+  const file = '/evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js'; \
+  let src = fs.readFileSync(file, 'utf8'); \
+  /* remove async em close() */ \
+  src = src.replace(/async close\\(\\)/g, 'close()'); \
+  /* remove await antes de this.socket.close() */ \
+  src = src.replace(/await this\\.socket\\.close\\(\\)/g, 'this.socket.close()'); \
+  fs.writeFileSync(file, src); \
+"
 
-# volta a usar usuário não-root
+# 3) Volta a usuário não-root
 USER node
