@@ -1,17 +1,23 @@
+# Dockerfile (na raiz do repo)
 FROM atendai/evolution-api:v2.2.0
 
-# como a imagem é Alpine, instalamos sed
+# 1) Troca para root pra poder instalar e editar arquivos
 USER root
-RUN apk update && apk add --no-cache sed
 
-# volta pra user não-root
+# 2) Instala o sed GNU (Debian/Ubuntu)
+RUN apt-get update \
+ && apt-get install -y sed \
+ && rm -rf /var/lib/apt/lists/*
+
+# 3) Aplica o patch no WebSocketClient do baileys
+#    - remove a palavra-chave async de close()
+#    - remove await antes de this.socket.close()
+RUN sed -i \
+    -E 's/\basync close\(\)/close()/g' \
+    /evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js \
+ && sed -i \
+    -E 's/await this\.socket\.close\(\)/this.socket.close()/g' \
+    /evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js
+
+# 4) Volta pro usuário padrão (node) e expõe a porta padrão
 USER node
-
-# no ENTRYPOINT, antes de iniciar a API,
-# removemos async/await de close()
-ENTRYPOINT [ "/bin/sh", "-c", "\
-  sed -i -E 's/async[[:space:]]+close\\(\\)/close()/' \
-    /evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js && \
-  sed -i -E 's/await this\\.socket\\.close\\(\\)/this.socket.close()/' \
-    /evolution/node_modules/@adiwajshing/baileys/lib/Socket/Client/websocket.js && \
-  exec node dist/main" ]
